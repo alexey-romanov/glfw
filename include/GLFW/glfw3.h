@@ -1830,6 +1830,17 @@ typedef void (* GLFWmousebuttonfun)(GLFWwindow* window, int button, int action, 
  */
 typedef void (* GLFWcursorposfun)(GLFWwindow* window, double xpos, double ypos);
 
+typedef enum {
+    GLFWTouchPhaseHover,
+    GLFWTouchPhaseBegan,
+    GLFWTouchPhaseMoved,
+    GLFWTouchPhaseEnded,
+    GLFWTouchPhaseCancelled,
+} GLFWTouchPhase;
+
+typedef void (* GLFWtouchfun)(GLFWwindow* window, int touch, GLFWTouchPhase phase, double x, double y);
+
+
 /*! @brief The function pointer type for cursor enter/leave callbacks.
  *
  *  This is the function pointer type for cursor enter/leave callbacks.
@@ -5365,6 +5376,9 @@ GLFWAPI GLFWmousebuttonfun glfwSetMouseButtonCallback(GLFWwindow* window, GLFWmo
  *  @ingroup input
  */
 GLFWAPI GLFWcursorposfun glfwSetCursorPosCallback(GLFWwindow* window, GLFWcursorposfun callback);
+
+GLFWAPI GLFWtouchfun glfwSetTouchCallback(GLFWwindow* window, GLFWtouchfun callback);
+
 
 /*! @brief Sets the cursor enter/leave callback.
  *

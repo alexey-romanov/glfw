@@ -99,6 +99,7 @@ void android_main(struct android_app* app)
     app->onAppCmd = handleAppCmd;
 
     _globalAndroidApp = app;
+    _glfw.gstate.app = app;
 
     main();
 }

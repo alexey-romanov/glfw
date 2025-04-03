@@ -1010,6 +1010,18 @@ GLFWAPI GLFWcursorposfun glfwSetCursorPosCallback(GLFWwindow* handle,
     return cbfun;
 }
 
+GLFWAPI GLFWtouchfun glfwSetTouchCallback(GLFWwindow* handle,
+    GLFWtouchfun cbfun)
+{
+    _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
+
+    _GLFWwindow* window = (_GLFWwindow*) handle;
+    assert(window != NULL);
+
+    _GLFW_SWAP(GLFWcursorposfun, window->callbacks.touch, cbfun);
+    return cbfun;
+}
+
 GLFWAPI GLFWcursorenterfun glfwSetCursorEnterCallback(GLFWwindow* handle,
                                                       GLFWcursorenterfun cbfun)
 {

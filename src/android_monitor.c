@@ -26,7 +26,8 @@
 //========================================================================
 
 #include "internal.h"
-
+#include <android/log.h>
+#include <android/window.h>
 //////////////////////////////////////////////////////////////////////////
 //////                       GLFW platform API                      //////
 //////////////////////////////////////////////////////////////////////////
@@ -54,6 +55,18 @@ void _glfwGetMonitorPosAndroid(_GLFWmonitor* monitor, int* xpos, int* ypos)
 void _glfwGetMonitorContentScaleAndroid(_GLFWmonitor* monitor,
                                         float* xscale, float* yscale)
 {
+    float scale = 1.0;
+    const int ACONFIGURATION_DENSITY_ANY = 0xfffe; // Added in API 21
+    const int32_t density = AConfiguration_getDensity(_glfw.gstate.app->config);
+    if (density == ACONFIGURATION_DENSITY_DEFAULT || density == ACONFIGURATION_DENSITY_NONE ||
+        density == ACONFIGURATION_DENSITY_ANY || density <= 0) {
+        scale = 1.0;
+    } else {
+        scale = density / 160.0;
+    }
+
+    *xscale = scale;
+    *yscale = scale;
 }
 
 void _glfwGetMonitorWorkareaAndroid(_GLFWmonitor* monitor,

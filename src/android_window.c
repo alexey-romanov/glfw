@@ -51,10 +51,72 @@ static void moveNativeWindowToBackground(ANativeActivity* nativeActivity)
     (*env)->CallBooleanMethod(env, nativeActivity->clazz, moveTaskToBackMethod, JNI_TRUE);
 }
 
+#define MAX_SIMULTANEOUS_TOUCHES 5
+
 static int32_t handleInput(struct android_app* app, AInputEvent* event)
 {
     if (AInputEvent_getType(event) == AINPUT_EVENT_TYPE_MOTION)
     {
+        // Touch input
+        {
+            const int maxTouches = MAX_SIMULTANEOUS_TOUCHES;
+            const int32_t action = AMotionEvent_getAction(event);
+            const int maskedAction = action & AMOTION_EVENT_ACTION_MASK;
+
+            GLFWTouchPhase phase;
+            bool validAction = true;
+
+            switch (maskedAction) {
+                case AMOTION_EVENT_ACTION_DOWN:
+                case AMOTION_EVENT_ACTION_POINTER_DOWN:
+                    phase = GLFWTouchPhaseBegan;
+                    break;
+                case AMOTION_EVENT_ACTION_UP:
+                case AMOTION_EVENT_ACTION_POINTER_UP:
+                case AMOTION_EVENT_ACTION_OUTSIDE:
+                    phase = GLFWTouchPhaseEnded;
+                    break;
+                case AMOTION_EVENT_ACTION_MOVE:
+                    phase = GLFWTouchPhaseMoved;
+                    break;
+                case AMOTION_EVENT_ACTION_CANCEL:
+                    phase = GLFWTouchPhaseCancelled;
+                    break;
+                default:
+                    phase = GLFWTouchPhaseCancelled;
+                    validAction = false;
+                    break;
+            }
+            if (validAction) {
+                if (phase == GLFWTouchPhaseMoved) {
+                    const size_t count = AMotionEvent_getPointerCount(event);
+                    size_t i;
+                    for (i = 0; i < count; i++) {
+                        const int touchNumber = AMotionEvent_getPointerId(event, i);
+                        if (touchNumber >= 0 && touchNumber < maxTouches) {
+                            double x = (double) AMotionEvent_getX(event, i);
+                            double y = (double) AMotionEvent_getY(event, i);
+                             _glfw.windowListHead->callbacks.touch(_glfw.windowListHead, touchNumber,
+                                                                  phase, x, y);
+                        }
+                    }
+                } else {
+                    const size_t index =
+                            (size_t) ((action & AMOTION_EVENT_ACTION_POINTER_INDEX_MASK) >>
+                                                                                         AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT);
+                    const int touchNumber = AMotionEvent_getPointerId(event, index);
+                    if (touchNumber >= 0 && touchNumber < maxTouches) {
+                        double x = (double) AMotionEvent_getX(event, index);
+                        double y = (double) AMotionEvent_getY(event, index);
+                        _glfw.windowListHead->callbacks.touch(_glfw.windowListHead, touchNumber,
+                                                              phase, x, y);
+                    }
+                }
+            }
+        }
+
+
+        // Touch as mouse input
         size_t pointerCount = AMotionEvent_getPointerCount(event);
 
         for (size_t i = 0; i < pointerCount; ++i)
@@ -68,11 +130,13 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event)
             {
                 case AMOTION_EVENT_ACTION_DOWN:
                 case AMOTION_EVENT_ACTION_POINTER_DOWN:
+                    _glfwInputCursorPos(_glfw.windowListHead, lastCursorPosX, lastCursorPosY);
                     _glfwInputMouseClick(_glfw.windowListHead, GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS, 0);
                     break;
 
                 case AMOTION_EVENT_ACTION_UP:
                 case AMOTION_EVENT_ACTION_POINTER_UP:
+                    _glfwInputCursorPos(_glfw.windowListHead, lastCursorPosX, lastCursorPosY);
                     _glfwInputMouseClick(_glfw.windowListHead, GLFW_MOUSE_BUTTON_LEFT, GLFW_RELEASE, 0);
                     break;
 
@@ -86,7 +150,7 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event)
             }
         }
 
-        return 1;
+         return 1;
     }
     else if (AInputEvent_getType(event) == AINPUT_EVENT_TYPE_KEY)
     {
@@ -557,6 +621,6 @@ VkResult _glfwCreateWindowSurfaceAndroid(VkInstance instance,
 
 GLFWAPI struct android_app* glfwGetAndroidApp(void)
 {
-    _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
+//    _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
     return _glfw.gstate.app;
 }
