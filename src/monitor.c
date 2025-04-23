@@ -388,7 +388,7 @@ GLFWAPI void glfwGetMonitorContentScale(GLFWmonitor* handle,
     _GLFW_REQUIRE_INIT();
 
     _GLFWmonitor* monitor = (_GLFWmonitor*) handle;
-    assert(monitor != NULL);
+//    assert(monitor != NULL);
 
     _glfw.platform.getMonitorContentScale(monitor, xscale, yscale);
 }
