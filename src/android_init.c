@@ -91,6 +91,29 @@ void handleAppCmd(struct android_app* app, int32_t cmd)
     }
 }
 
+#define _glfwWasJavaExceptionThrown() \
+    ((*jni)->ExceptionCheck(jni) ? ((*jni)->ExceptionClear(jni), true) : false)
+
+#define _glfwClearJavaException() \
+    if ((*jni)->ExceptionCheck(jni)) { \
+        (*jni)->ExceptionClear(jni); \
+
+static jmethodID _glfwGetJavaMethodID(JNIEnv *jni, jobject object, const char *name,
+                                      const char *sig) {
+    if (object) {
+        jclass class = (*jni)->GetObjectClass(jni, object);
+        jmethodID methodID = (*jni)->GetMethodID(jni, class, name, sig);
+        (*jni)->DeleteLocalRef(jni, class);
+        return _glfwWasJavaExceptionThrown() ? NULL : methodID;
+    } else {
+        return NULL;
+    }
+}
+
+#define _glfwCallJavaMethod(jni, object, methodName, methodSig, returnType) \
+    (*jni)->Call##returnType##Method(jni, object, \
+        _glfwGetJavaMethodID(jni, object, methodName, methodSig))
+
 // Android Entry Point
 void android_main(struct android_app* app)
 {
@@ -100,6 +123,60 @@ void android_main(struct android_app* app)
 
     _globalAndroidApp = app;
     _glfw.gstate.app = app;
+
+    // Init java env
+    JavaVM *vm = app->activity->vm;
+    JNIEnv *jniEnv;
+    (*vm)->AttachCurrentThread(vm, &jniEnv, NULL);
+
+    JNIEnv *jni = jniEnv;
+
+    const int SDK_INT = app->activity->sdkVersion;
+
+    if (SDK_INT >= 28) {
+        static const int LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES = 0x00000001;
+
+        jobject window = _glfwCallJavaMethod(jni, app->activity->clazz, "getWindow",
+                                             "()Landroid/view/Window;", Object);
+        jobject attributes = _glfwCallJavaMethod(jni, window, "getAttributes",
+                                                 "()Landroid/view/WindowManager$LayoutParams;",
+                                                 Object);
+        jclass clazz = (*jni)->GetObjectClass(jni, attributes);
+        jfieldID layoutInDisplayCutoutMode = (*jni)->GetFieldID(jni, clazz,
+                                                                "layoutInDisplayCutoutMode", "I");
+
+        (*jni)->SetIntField(jni, attributes, layoutInDisplayCutoutMode,
+                            LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES);
+        (*jni)->DeleteLocalRef(jni, clazz);
+        (*jni)->DeleteLocalRef(jni, attributes);
+        (*jni)->DeleteLocalRef(jni, window);
+    }
+
+//    if (!windowAttributesSet) {
+//        windowAttributesSet = true;
+//
+//        const int SDK_INT = app->activity->sdkVersion;
+//        JNIEnv *jni = platformData->jniEnv;
+//
+//        if (SDK_INT >= 28) {
+//            static const int LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES = 0x00000001;
+//
+//            jobject window = _glfwCallJavaMethod(jni, app->activity->clazz, "getWindow",
+//                                                 "()Landroid/view/Window;", Object);
+//            jobject attributes = _glfwCallJavaMethod(jni, window, "getAttributes",
+//                                                     "()Landroid/view/WindowManager$LayoutParams;",
+//                                                     Object);
+//            jclass clazz = (*jni)->GetObjectClass(jni, attributes);
+//            jfieldID layoutInDisplayCutoutMode = (*jni)->GetFieldID(jni, clazz,
+//                                                                    "layoutInDisplayCutoutMode", "I");
+//
+//            (*jni)->SetIntField(jni, attributes, layoutInDisplayCutoutMode,
+//                                LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES);
+//            (*jni)->DeleteLocalRef(jni, clazz);
+//            (*jni)->DeleteLocalRef(jni, attributes);
+//            (*jni)->DeleteLocalRef(jni, window);
+//        }
+//    }
 
     main();
 }
